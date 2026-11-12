@@ -1,7 +1,42 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices, type Project } from '@playwright/test';
 import 'dotenv/config';
 import { env, STORAGE_STATE } from './src/utils/env';
 
+/** Desktop browsers every UI test runs against. */
+const desktopBrowsers = [
+  { name: 'chromium', device: devices['Desktop Chrome'] },
+  { name: 'firefox', device: devices['Desktop Firefox'] },
+  { name: 'webkit', device: devices['Desktop Safari'] },
+];
+
+/** Mobile devices: the login flow is verified on small screens. */
+const mobileDevices = [
+  { name: 'mobile-chrome', device: devices['Pixel 7'] },
+  { name: 'mobile-safari', device: devices['iPhone 14'] },
+];
+
+const uiProjects: Project[] = desktopBrowsers.flatMap(({ name, device }) => [
+  // Authenticated UI tests (reuse the session saved by the setup project)
+  {
+    name: `ui-${name}`,
+    testDir: './tests/ui',
+    testIgnore: /auth\/.*\.spec\.ts/,
+    dependencies: ['setup'],
+    use: { ...device, storageState: STORAGE_STATE },
+  },
+  // Authentication tests start from a clean, logged-out browser
+  {
+    name: `auth-${name}`,
+    testDir: './tests/ui/auth',
+    use: { ...device },
+  },
+]);
+
+const mobileProjects: Project[] = mobileDevices.map(({ name, device }) => ({
+  name,
+  testDir: './tests/ui/auth',
+  use: { ...device },
+}));
 
 export default defineConfig({
   testDir: './tests',
@@ -12,11 +47,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 1,
   // Public demo servers are shared & slow: keep parallelism modest to avoid overloading them
   workers: process.env.CI ? 2 : 3,
-  reporter: [
-    ['list'],
-    ['html', { open: 'never' }],
-    ...(process.env.CI ? ([['github']] as const) : []),
-  ],
+  reporter: [['list'], ['html', { open: 'never' }], ...(process.env.CI ? ([['github']] as const) : [])],
   use: {
     baseURL: env.baseUrl,
     trace: 'retain-on-failure',
@@ -26,30 +57,11 @@ export default defineConfig({
     navigationTimeout: 45_000,
   },
   projects: [
-    // 1. Log in once and save the session for all authenticated UI tests
-    { name: 'setup', testMatch: /.*\.setup\.ts/ },
-
-    // 2. UI tests that need a logged-in admin (reuse saved session)
-    {
-      name: 'ui-chromium',
-      testDir: './tests/ui',
-      testIgnore: /auth\/.*\.spec\.ts/,
-      dependencies: ['setup'],
-      use: { ...devices['Desktop Chrome'], storageState: STORAGE_STATE },
-    },
-
-    // 3. Authentication tests start from a clean, logged-out browser
-    {
-      name: 'ui-auth',
-      testDir: './tests/ui/auth',
-      use: { ...devices['Desktop Chrome'] },
-    },
-
-    // 4. API tests (no browser)
-    {
-      name: 'api',
-      testDir: './tests/api',
-      use: { baseURL: env.apiBaseUrl },
-    },
+    // Log in once (Chromium) and save the session; cookies are reused by every browser
+    { name: 'setup', testMatch: /.*\.setup\.ts/, use: { ...devices['Desktop Chrome'] } },
+    ...uiProjects,
+    ...mobileProjects,
+    // API tests (no browser)
+    { name: 'api', testDir: './tests/api', use: { baseURL: env.apiBaseUrl } },
   ],
 });

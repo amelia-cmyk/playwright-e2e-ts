@@ -29,9 +29,7 @@ test.describe('Admin > User Management', () => {
     await adminUsersPage.filterByRole('Admin');
 
     // Poll until the table has re-rendered with the filtered result
-    await expect
-      .poll(async () => [...new Set(await adminUsersPage.columnValues('User Role'))])
-      .toEqual(['Admin']);
+    await expect.poll(async () => [...new Set(await adminUsersPage.columnValues('User Role'))]).toEqual(['Admin']);
   });
 
   test('reset clears the search filters', async ({ adminUsersPage }) => {

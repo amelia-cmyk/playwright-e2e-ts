@@ -1,5 +1,6 @@
 import { test, expect } from '../../src/fixtures/test-fixtures';
-import { DataFactory } from '../../src/utils/data-factory';
+import { BookingData, DataFactory } from '../../src/utils/data-factory';
+import { BookingId, CreatedBooking } from '../../src/utils/booking-api';
 
 test.describe('Booking API (Restful-Booker)', () => {
   test.beforeEach(async ({ bookingApi }) => {
@@ -12,7 +13,7 @@ test.describe('Booking API (Restful-Booker)', () => {
     // CREATE
     const createRes = await bookingApi.create(booking);
     expect(createRes.status()).toBe(200);
-    const { bookingid, booking: created } = await createRes.json();
+    const { bookingid, booking: created } = (await createRes.json()) as CreatedBooking;
     expect(bookingid).toEqual(expect.any(Number));
     expect(created).toEqual(booking);
 
@@ -30,7 +31,7 @@ test.describe('Booking API (Restful-Booker)', () => {
     // PARTIAL UPDATE (PATCH)
     const patchRes = await bookingApi.partialUpdate(bookingid, { firstname: 'Patched' });
     expect(patchRes.status()).toBe(200);
-    expect((await patchRes.json()).firstname).toBe('Patched');
+    expect(((await patchRes.json()) as BookingData).firstname).toBe('Patched');
 
     // DELETE
     const deleteRes = await bookingApi.delete(bookingid);
@@ -40,18 +41,18 @@ test.describe('Booking API (Restful-Booker)', () => {
 
   test('new booking is returned when filtering by name', async ({ bookingApi }) => {
     const booking = DataFactory.booking({ firstname: `QA${Date.now()}` });
-    const { bookingid } = await (await bookingApi.create(booking)).json();
+    const { bookingid } = await bookingApi.createAndParse(booking);
 
     const res = await bookingApi.list({ firstname: booking.firstname, lastname: booking.lastname });
     expect(res.status()).toBe(200);
-    const ids = (await res.json()).map((b: { bookingid: number }) => b.bookingid);
+    const ids = ((await res.json()) as BookingId[]).map((b) => b.bookingid);
     expect(ids).toContain(bookingid);
 
     await bookingApi.delete(bookingid);
   });
 
   test('delete without auth token is rejected (403)', async ({ bookingApi }) => {
-    const { bookingid } = await (await bookingApi.create(DataFactory.booking())).json();
+    const { bookingid } = await bookingApi.createAndParse(DataFactory.booking());
 
     const res = await bookingApi.delete(bookingid, false);
     expect(res.status()).toBe(403);

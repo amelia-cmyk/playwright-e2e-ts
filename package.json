@@ -5,13 +5,21 @@
   "private": true,
   "scripts": {
     "test": "playwright test",
-    "test:ui": "playwright test --project=ui-chromium --project=ui-auth",
+    "test:chromium": "playwright test --project=setup --project=ui-chromium --project=auth-chromium",
+    "test:firefox": "playwright test --project=setup --project=ui-firefox --project=auth-firefox",
+    "test:webkit": "playwright test --project=setup --project=ui-webkit --project=auth-webkit",
+    "test:mobile": "playwright test --project=mobile-chrome --project=mobile-safari",
     "test:api": "playwright test --project=api",
     "test:smoke": "playwright test --grep @smoke",
-    "test:headed": "playwright test --headed",
+    "test:headed": "playwright test --project=setup --project=ui-chromium --project=auth-chromium --headed",
     "test:debug": "playwright test --debug",
     "report": "playwright show-report",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run typecheck && npm run lint && npm run format:check"
   },
   "keywords": [
     "playwright",
@@ -21,10 +29,17 @@
   ],
   "license": "MIT",
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@faker-js/faker": "^10.6.0",
     "@playwright/test": "^1.65.0",
     "@types/node": "^26.6.6",
     "dotenv": "^18.0.10",
-    "typescript": "^7.0.2"
+    "eslint": "^10.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-playwright": "^2.12.2",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
+    "typescript": "~6.0",
+    "typescript-eslint": "^8.72.2"
   }
 }

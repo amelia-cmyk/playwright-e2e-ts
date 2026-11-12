@@ -2,6 +2,17 @@ import { APIRequestContext, APIResponse } from '@playwright/test';
 import { BookingData } from './data-factory';
 import { env } from './env';
 
+/** Response body of POST /booking */
+export interface CreatedBooking {
+  bookingid: number;
+  booking: BookingData;
+}
+
+/** Item of GET /booking */
+export interface BookingId {
+  bookingid: number;
+}
+
 /** Thin client for the Restful-Booker API (https://restful-booker.herokuapp.com/apidoc). */
 export class BookingApi {
   private token?: string;
@@ -12,10 +23,17 @@ export class BookingApi {
     const res = await this.request.post('/auth', {
       data: { username: env.api.username, password: env.api.password },
     });
-    const body = await res.json();
+    const body = (await res.json()) as { token?: string; reason?: string };
     if (!body.token) throw new Error(`Auth failed: ${JSON.stringify(body)}`);
-    this.token = body.token as string;
+    this.token = body.token;
     return this.token;
+  }
+
+  /** Creates a booking and returns the parsed body (shortcut for test setup). */
+  async createAndParse(booking: BookingData): Promise<CreatedBooking> {
+    const res = await this.create(booking);
+    if (!res.ok()) throw new Error(`Create booking failed: ${res.status()}`);
+    return (await res.json()) as CreatedBooking;
   }
 
   private authHeaders(): Record<string, string> {
