@@ -21,6 +21,7 @@ An end-to-end test automation framework built with **Playwright + TypeScript**. 
 ## ✨ Highlights
 
 - **Cross-browser & mobile**: Chromium, Firefox, WebKit (Safari), plus Pixel 7 and iPhone 14 viewports
+- **Accessibility testing** with axe-core against WCAG 2.1 AA, using a known-issues baseline: existing app issues are tracked in the report, while any new violation fails the build
 - **Page Object Model** with a shared `BasePage` for common layout (menu, header, toast, loader)
 - **Custom fixtures**: page objects and API clients are injected into tests, so there is no boilerplate
 - **Authenticate once** with a `setup` project plus `storageState`, so UI tests start already logged in
@@ -41,14 +42,15 @@ An end-to-end test automation framework built with **Playwright + TypeScript**. 
 ├── src/
 │   ├── pages/            # Page Objects (BasePage, LoginPage, AdminUsersPage, PimPage, ...)
 │   ├── fixtures/         # Custom Playwright fixtures
-│   ├── utils/            # env config, data factory, API client
-│   └── data/             # Static test data (menu modules)
+│   ├── utils/            # env config, data factory, API client, a11y scanner
+│   └── data/             # Static test data (menu modules, a11y known-issues baseline)
 ├── tests/
 │   ├── setup/            # Login once & save session
 │   ├── ui/
 │   │   ├── auth/         # Login / logout (runs logged-out)
 │   │   ├── admin/        # Admin > User Management
 │   │   ├── pim/          # PIM > Employee
+│   │   ├── a11y/         # Accessibility scans (Chromium only)
 │   │   └── navigation.spec.ts
 │   └── api/              # Restful-Booker CRUD & negative tests
 ├── eslint.config.mjs     # Lint rules (TypeScript + Playwright best practices)
@@ -57,23 +59,32 @@ An end-to-end test automation framework built with **Playwright + TypeScript**. 
 
 ### Test projects
 
-| Project                                          | What runs                                         |
-| ------------------------------------------------ | ------------------------------------------------- |
-| `setup`                                          | Logs in once and saves the session                |
-| `ui-chromium` / `ui-firefox` / `ui-webkit`       | Authenticated UI tests on each desktop browser    |
-| `auth-chromium` / `auth-firefox` / `auth-webkit` | Login/logout tests from a clean, logged-out state |
-| `mobile-chrome` / `mobile-safari`                | Login/logout tests on Pixel 7 and iPhone 14       |
-| `api`                                            | Restful-Booker API tests (no browser)             |
+| Project                                          | What runs                                                                             |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `setup`                                          | Logs in once and saves the session                                                    |
+| `ui-chromium` / `ui-firefox` / `ui-webkit`       | Authenticated UI tests on each desktop browser (accessibility scans on Chromium only) |
+| `auth-chromium` / `auth-firefox` / `auth-webkit` | Login/logout tests from a clean, logged-out state                                     |
+| `mobile-chrome` / `mobile-safari`                | Login/logout tests on Pixel 7 and iPhone 14                                           |
+| `api`                                            | Restful-Booker API tests (no browser)                                                 |
 
 ## 🧪 Test coverage
 
-| Area           | Scenarios                                                                                                    |
-| -------------- | ------------------------------------------------------------------------------------------------------------ |
-| Authentication | Valid login, invalid credentials (data-driven), required-field validation, logout + protected route redirect |
-| Navigation     | Every main-menu module opens correctly (data-driven), menu search                                            |
-| Admin > Users  | List users, search by username, no-result search, filter by role, reset filters                              |
-| PIM > Employee | Add employee, find new employee in list, required-field validation                                           |
-| Booking API    | Full CRUD lifecycle, filter by name, 403 without token, 404 for unknown id                                   |
+| Area           | Scenarios                                                                                                              |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Authentication | Valid login, invalid credentials (data-driven), required-field validation, logout + protected route redirect           |
+| Navigation     | Every main-menu module opens correctly (data-driven), menu search                                                      |
+| Admin > Users  | List users, search by username, no-result search, filter by role, reset filters                                        |
+| PIM > Employee | Add employee, find new employee in list, required-field validation                                                     |
+| Booking API    | Full CRUD lifecycle, filter by name, 403 without token, 404 for unknown id                                             |
+| Accessibility  | WCAG 2.1 AA scans of Login, Dashboard, Admin Users, Employee List and Add Employee; accessible names on the login form |
+
+### ♿ How the accessibility baseline works
+
+The OrangeHRM demo already has accessibility issues that this project cannot fix (for example icon-only buttons without a name, inputs without labels, and low color contrast). Failing every run on those would hide real regressions, so known issues are listed per page in [`src/data/a11y-known-issues.ts`](src/data/a11y-known-issues.ts):
+
+- **New violation** (not in the baseline) → the test **fails**, with the rule, impact, element count and example selectors.
+- **Known violation** → the test passes and the issue is shown as an annotation in the report. The full axe result is attached as JSON.
+- **Known violation that disappeared** → the report suggests removing it from the baseline.
 
 ## 🚀 Getting started
 
@@ -90,6 +101,7 @@ cp .env.example .env        # defaults already point to the public demo apps
 | `npm run test:mobile`                                    | Mobile tests (Pixel 7, iPhone 14)         |
 | `npm run test:api`                                       | API tests only                            |
 | `npm run test:smoke`                                     | Tests tagged `@smoke`                     |
+| `npm run test:a11y`                                      | Accessibility scans only                  |
 | `npm run test:headed`                                    | Chromium tests with a visible browser     |
 | `npm run report`                                         | Open the last HTML report                 |
 | `npm run check`                                          | Type check + lint + format check          |

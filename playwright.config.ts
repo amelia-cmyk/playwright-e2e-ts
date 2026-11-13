@@ -20,7 +20,8 @@ const uiProjects: Project[] = desktopBrowsers.flatMap(({ name, device }) => [
   {
     name: `ui-${name}`,
     testDir: './tests/ui',
-    testIgnore: /auth\/.*\.spec\.ts/,
+    // Accessibility scans check the DOM, not the engine, so they run on Chromium only
+    testIgnore: name === 'chromium' ? [/auth\/.*\.spec\.ts/] : [/auth\/.*\.spec\.ts/, /a11y\/.*\.spec\.ts/],
     dependencies: ['setup'],
     use: { ...device, storageState: STORAGE_STATE },
   },
